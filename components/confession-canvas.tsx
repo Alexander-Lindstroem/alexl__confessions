@@ -26,7 +26,7 @@ export function ConfessionCanvas() {
   const [devModeEnabled, setDevModeEnabled] = useState(false)
   const [isPanningPaused, setIsPanningPaused] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | undefined>(undefined)
   // Store positions by confession ID to maintain stability
   const positionsMapRef = useRef<Map<number, Position>>(new Map())
   const [positions, setPositions] = useState<Map<number, Position>>(new Map())
