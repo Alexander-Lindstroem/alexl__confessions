@@ -50,7 +50,7 @@ export function ConfessionBubble({ confession, style }: ConfessionBubbleProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '2rem',
+        padding: '3rem',
         cursor: 'pointer',
         transition: 'box-shadow 0.2s ease, filter 0.2s ease',
         boxShadow: `0 4px 16px ${colorLight}`,
@@ -78,14 +78,16 @@ export function ConfessionBubble({ confession, style }: ConfessionBubbleProps) {
       />
       <p
         style={{
+          fontFamily: 'var(--font-quicksand), sans-serif',
+          fontWeight: 500,
           fontSize: '0.95rem',
-          lineHeight: '1.5',
+          lineHeight: '1.6',
           textAlign: 'center',
           color: '#1f2937',
           wordWrap: 'break-word',
           overflow: 'hidden',
           display: '-webkit-box',
-          WebkitLineClamp: 8,
+          WebkitLineClamp: 7,
           WebkitBoxOrient: 'vertical',
           position: 'relative',
           zIndex: 1,

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
+import { useDrag } from '@use-gesture/react'
 import { createClient } from '@/lib/supabase/client'
 import { ConfessionBubble } from './confession-bubble'
 import { ConfessionModal } from './confession-modal'
@@ -30,6 +31,8 @@ export function ConfessionCanvas() {
   // Store positions by confession ID to maintain stability
   const positionsMapRef = useRef<Map<number, Position>>(new Map())
   const [positions, setPositions] = useState<Map<number, Position>>(new Map())
+  // Track which confessions have been rendered at least once
+  const hasRenderedRef = useRef<Set<number>>(new Set())
 
   // Fetch confessions from Supabase
   const { data: confessions, isLoading, error } = useQuery({
@@ -277,11 +280,39 @@ export function ConfessionCanvas() {
     setPositions(new Map(newPositions))
   }, [confessions, offset, currentUser])
 
-  // Handle mouse movement for panning
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+  // Touch/drag gesture handler for mobile scrolling
+  const bind = useDrag(
+    ({ offset: [x, y], lastOffset, movement: [mx, my], down, memo = lastOffset || [0, 0] }) => {
       // Don't pan if hovering over buttons
-      if (isPanningPaused) {
+      if (isPanningPaused && down) {
+        return memo
+      }
+
+      // Update offset based on drag movement
+      setOffset({ x, y })
+
+      return [x, y]
+    },
+    {
+      from: () => [offset.x, offset.y],
+      bounds: { left: -Infinity, right: Infinity, top: -Infinity, bottom: Infinity },
+      rubberband: true,
+    }
+  )
+
+  // Handle mouse movement for edge-based panning (desktop only, disabled on touch devices)
+  useEffect(() => {
+    // Check if device has touch capability
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+
+    // Don't enable edge-based panning on touch devices
+    if (isTouchDevice) {
+      return
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Don't pan if hovering over buttons or modal is open
+      if (isPanningPaused || isModalOpen) {
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current)
           animationFrameRef.current = undefined
@@ -348,7 +379,7 @@ export function ConfessionCanvas() {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isPanningPaused])
+  }, [isPanningPaused, isModalOpen])
 
   if (isLoading) {
     return (
@@ -457,6 +488,7 @@ export function ConfessionCanvas() {
   return (
     <div
       ref={canvasRef}
+      {...bind()}
       style={{
         width: '100vw',
         height: '100vh',
@@ -472,6 +504,7 @@ export function ConfessionCanvas() {
           #ffffff
         `,
         cursor: 'default',
+        touchAction: 'none',
       }}
     >
       {/* Dev Mode Button (only visible in development) */}
@@ -499,10 +532,17 @@ export function ConfessionCanvas() {
           const position = positions.get(confession.id)
           if (!position) return null
 
+          // Check if this confession has been rendered before
+          const hasBeenRendered = hasRenderedRef.current.has(confession.id)
+          // Mark as rendered
+          if (!hasBeenRendered) {
+            hasRenderedRef.current.add(confession.id)
+          }
+
           return (
             <motion.div
               key={confession.id}
-              initial={{ scale: 0, opacity: 0, x: position.x - 140, y: position.y - 140 }}
+              initial={hasBeenRendered ? false : { scale: 0, opacity: 0 }}
               animate={{
                 x: position.x - 140,
                 y: position.y - 140,

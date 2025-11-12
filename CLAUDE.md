@@ -679,13 +679,10 @@ SELECT cron.schedule(
   $$
   -- Delete anonymous users older than 24 hours
   DELETE FROM auth.users
-  WHERE is_anonymous = true
-  AND created_at < NOW() - INTERVAL '24 hours';
 
   -- Delete invalid confessions (severity 0) older than 24 hours
   DELETE FROM confessions
   WHERE severity = 0
-  AND created_at < NOW() - INTERVAL '24 hours';
   $$
 );
 ```

@@ -128,7 +128,7 @@ export function InfoButton({ onHoverStart, onHoverEnd }: InfoButtonProps) {
                     marginBottom: '0.5rem',
                   }}
                 >
-                  24-Hour Data Deletion
+                  24-Hour User Data Deletion
                 </div>
                 <p style={{ margin: 0 }}>
                   User data is anonymous and automatically deleted every 24 hours. No long-term tracking
@@ -144,11 +144,12 @@ export function InfoButton({ onHoverStart, onHoverEnd }: InfoButtonProps) {
                     marginBottom: '0.5rem',
                   }}
                 >
-                  Transparent Data Collection
+                  AI-powered Severity Analysis
                 </div>
                 <p style={{ margin: 0 }}>
-                  No data is being collected aside from what you can see on the screen. Only confession
-                  text and severity ratings are stored.
+                  Every confession is analyzed by an AI to determine how severe it is, 
+                  and assigned a color based on this assessement. From blue, least severe, to red, most severe.
+                  Gray confessions have been judged as invalid.
                 </p>
               </div>
             </div>
