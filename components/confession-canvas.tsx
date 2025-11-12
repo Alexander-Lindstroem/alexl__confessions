@@ -33,6 +33,10 @@ export function ConfessionCanvas() {
   const [positions, setPositions] = useState<Map<number, Position>>(new Map())
   // Track which confessions have been rendered at least once
   const hasRenderedRef = useRef<Set<number>>(new Set())
+  // Track whether initial positioning is complete (collision-free)
+  const [positionsReady, setPositionsReady] = useState(false)
+  // Track if we've completed the initial positioning with collision detection
+  const hasCompletedInitialPositioning = useRef(false)
 
   // Fetch confessions from Supabase
   const { data: confessions, isLoading, error } = useQuery({
@@ -89,6 +93,22 @@ export function ConfessionCanvas() {
   // Handle confession positioning with collision detection
   useEffect(() => {
     if (!confessions || confessions.length === 0) return
+
+    // Don't run until currentUser is loaded (needed for seeded randomization)
+    if (!currentUser) return
+
+    // Check if this is initial positioning (haven't completed initial positioning yet)
+    const isInitialPositioning = !hasCompletedInitialPositioning.current
+
+    // Check if there's a new confession being added
+    const hasNewConfession = confessions.length > positionsMapRef.current.size
+
+    // Only run positioning logic if:
+    // 1. Initial load (haven't completed initial positioning yet), OR
+    // 2. New confession was added
+    if (!isInitialPositioning && !hasNewConfession) {
+      return
+    }
 
     const newPositions = new Map(positionsMapRef.current)
     const bubbleSize = 280
@@ -211,7 +231,8 @@ export function ConfessionCanvas() {
 
     // Iteratively resolve all collisions (run multiple passes)
     // If there's a new confession, keep it pinned and only push others away
-    for (let iteration = 0; iteration < 15; iteration++) {
+    const maxIterations = isInitialPositioning ? 50 : 15 // More iterations needed for initial positioning
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       let hadCollision = false
       const positionsArray = Array.from(newPositions.entries())
 
@@ -278,7 +299,13 @@ export function ConfessionCanvas() {
 
     positionsMapRef.current = newPositions
     setPositions(new Map(newPositions))
-  }, [confessions, offset, currentUser])
+
+    // Mark positions as ready after initial positioning is complete
+    if (isInitialPositioning) {
+      hasCompletedInitialPositioning.current = true
+      setPositionsReady(true)
+    }
+  }, [confessions, currentUser, offset])
 
   // Touch/drag gesture handler for mobile scrolling
   const bind = useDrag(
@@ -381,7 +408,7 @@ export function ConfessionCanvas() {
     }
   }, [isPanningPaused, isModalOpen])
 
-  if (isLoading) {
+  if (isLoading || !positionsReady) {
     return (
       <div
         style={{
@@ -542,7 +569,12 @@ export function ConfessionCanvas() {
           return (
             <motion.div
               key={confession.id}
-              initial={hasBeenRendered ? false : { scale: 0, opacity: 0 }}
+              initial={hasBeenRendered ? false : {
+                x: position.x - 140,
+                y: position.y - 140,
+                scale: 0,
+                opacity: 0
+              }}
               animate={{
                 x: position.x - 140,
                 y: position.y - 140,

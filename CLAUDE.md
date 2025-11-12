@@ -364,10 +364,12 @@ When a user submits a confession:
 
 ### Collision Resolution Algorithm
 
-The system runs up to 15 iterations of collision detection and resolution:
+The system iteratively resolves all collisions to ensure no bubbles overlap. The number of iterations varies based on the scenario:
 
 ```typescript
-for (let iteration = 0; iteration < 15; iteration++) {
+const maxIterations = isInitialPositioning ? 50 : 15
+
+for (let iteration = 0; iteration < maxIterations; iteration++) {
   for each pair of confessions {
     if (distance < minDistance) {
       if (one is the new confession) {
@@ -383,6 +385,19 @@ for (let iteration = 0; iteration < 15; iteration++) {
 }
 ```
 
+**Iteration Strategy:**
+- **Initial positioning**: Up to 50 iterations (needed for large numbers of confessions)
+- **Adding new confession**: Up to 15 iterations (fewer collisions to resolve)
+- **Early exit**: Stops as soon as no collisions remain
+
+**Why More Iterations for Initial Load:**
+The golden spiral placement creates many overlaps initially, especially with 100+ confessions. With 141 confessions, the algorithm may find 4000+ collision pairs that need to be resolved through cascading pushes. 50 iterations ensures all overlaps are eliminated before the page is displayed to the user.
+
+**Timing:**
+- Collision detection runs during the loading screen
+- The page only renders once `positionsReady` is true
+- User never sees overlapping bubbles on initial load
+
 **Key Behaviors:**
 - **New confession**: Position is immovable (pinned at viewport center)
 - **Direct collision**: Existing confession is pushed full distance away
@@ -395,13 +410,29 @@ for (let iteration = 0; iteration < 15; iteration++) {
 - `minDistance`: 320px (bubbleSize + 40px gap)
 - `spiralSpacing`: 150px (base distance between spiral rings)
 
+**Effect Dependencies:**
+The positioning effect runs when:
+1. **Initial load**: `confessions` and `currentUser` are loaded (waits for both)
+2. **New confession added**: `confessions.length` increases
+3. **Viewport change**: `offset` changes (only affects new confession placement)
+
+The effect includes an early return to prevent unnecessary re-runs:
+- Skips if confessions or currentUser not loaded
+- Skips if initial positioning already completed AND no new confession added
+- This prevents collision detection from running on every scroll
+
 ### Animation System
 
 Uses Framer Motion with spring physics:
 
 ```typescript
 <motion.div
-  initial={{ scale: 0, opacity: 0 }}
+  initial={hasBeenRendered ? false : {
+    x: position.x - 140, // Start at final position
+    y: position.y - 140,
+    scale: 0,             // Scale up from 0
+    opacity: 0            // Fade in from transparent
+  }}
   animate={{
     x: position.x - 140, // Center the bubble (280px / 2)
     y: position.y - 140,
@@ -422,7 +453,11 @@ Uses Framer Motion with spring physics:
 - **Stiffness**: 100 (controls oscillation speed)
 - **Damping**: 15 (controls how quickly motion settles)
 - **Mass**: 1 (affects inertia)
-- **Scale-in effect**: New confessions scale from 0 to 1
+
+**Animation Behavior:**
+- **First render** (`hasBeenRendered = false`): Bubble spawns at its collision-free position with scale: 0 and opacity: 0, then animates to full size
+- **Subsequent updates** (`hasBeenRendered = true`): `initial={false}` disables initial animation, bubble smoothly transitions to new position if needed
+- **No position sliding**: By setting x/y in the `initial` state, bubbles never slide from (0,0) or an incorrect position - they appear exactly where they belong
 
 ### Hover Effects
 
